@@ -1,3 +1,10 @@
+//
+//  AnimationPreviewView.swift
+//  Spritesheet
+//
+//  Created by Tufan Cakir on 13.10.26.
+//
+
 import SwiftUI
 
 struct AnimationPreviewView: View {
@@ -10,7 +17,18 @@ struct AnimationPreviewView: View {
     @State private var stoppedIndex = 0
     @State private var playsBackward = false
     @State private var loops = true
-    @State private var pingPong = false
+    @State private var pingPong: Bool
+
+    init(model: EditorViewModel) {
+        self.model = model
+        _loops = State(initialValue: model.project.animationLoops ?? true)
+        _playsBackward = State(
+            initialValue: model.project.animationPlaysBackward ?? false
+        )
+        _pingPong = State(
+            initialValue: model.project.animationPingPong ?? false
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -23,9 +41,14 @@ struct AnimationPreviewView: View {
                 .clipShape(.rect(cornerRadius: 18))
 
                 HStack(spacing: 24) {
-                    Button("Previous", systemImage: "backward.end.fill") { step(-1) }
-                        .labelStyle(.iconOnly)
-                    Button(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause.fill" : "play.fill") {
+                    Button("Previous", systemImage: "backward.end.fill") {
+                        step(-1)
+                    }
+                    .labelStyle(.iconOnly)
+                    Button(
+                        isPlaying ? "Pause" : "Play",
+                        systemImage: isPlaying ? "pause.fill" : "play.fill"
+                    ) {
                         if isPlaying {
                             stoppedIndex = displayedIndex(at: .now)
                             isPlaying = false
@@ -53,7 +76,11 @@ struct AnimationPreviewView: View {
                             "FPS",
                             value: Binding(
                                 get: { Int(model.project.animationFPS) },
-                                set: { model.project.animationFPS = Double(min(60, max(1, $0))) }
+                                set: {
+                                    model.project.animationFPS = Double(
+                                        min(60, max(1, $0))
+                                    )
+                                }
                             ),
                             minimum: 1
                         )
@@ -69,7 +96,13 @@ struct AnimationPreviewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") {
+                        model.project.animationLoops = loops
+                        model.project.animationPlaysBackward = playsBackward
+                        model.project.animationPingPong = pingPong
+                        model.projectDidChange()
+                        dismiss()
+                    }
                 }
             }
             .onChange(of: scenePhase) { _, phase in
@@ -79,6 +112,7 @@ struct AnimationPreviewView: View {
                 }
             }
         }
+        .interactiveDismissDisabled()
     }
 
     @ViewBuilder
@@ -87,8 +121,12 @@ struct AnimationPreviewView: View {
             let frame = model.project.frames[index]
             let source = model.project.sources.first { $0.id == frame.sourceID }
             ZStack(alignment: .bottom) {
-                FrameThumbnailView(projectID: model.project.id, source: source, frame: frame)
-                    .padding(24)
+                FrameThumbnailView(
+                    projectID: model.project.id,
+                    source: source,
+                    frame: frame
+                )
+                .padding(24)
                 Text("Frame \(index + 1) of \(model.project.frames.count)")
                     .font(.caption)
                     .padding(8)
@@ -102,7 +140,9 @@ struct AnimationPreviewView: View {
 
     private func displayedIndex(at date: Date) -> Int {
         let count = model.project.frames.count
-        guard count > 1, isPlaying else { return min(stoppedIndex, max(0, count - 1)) }
+        guard count > 1, isPlaying else {
+            return min(stoppedIndex, max(0, count - 1))
+        }
         let elapsed = max(0, date.timeIntervalSince(startDate))
         let ticks = Int(elapsed * model.project.animationFPS)
         let base = stoppedIndex + ticks

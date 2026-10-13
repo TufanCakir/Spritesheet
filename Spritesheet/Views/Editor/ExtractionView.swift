@@ -1,3 +1,10 @@
+//
+//  ExtractionView.swift
+//  Spritesheet
+//
+//  Created by Tufan Cakir on 13.10.26.
+//
+
 import SwiftUI
 
 struct ExtractionView: View {
@@ -12,22 +19,52 @@ struct ExtractionView: View {
             Form {
                 Section("Source") {
                     LabeledContent("File", value: source.originalFilename)
-                    LabeledContent("Size", value: "\(source.pixelWidth) × \(source.pixelHeight) px")
+                    LabeledContent(
+                        "Size",
+                        value: "\(source.pixelWidth) × \(source.pixelHeight) px"
+                    )
                 }
                 Section("Grid") {
-                    IntegerField("Columns", value: $settings.columns, minimum: 1)
+                    IntegerField(
+                        "Columns",
+                        value: $settings.columns,
+                        minimum: 1
+                    )
                     IntegerField("Rows", value: $settings.rows, minimum: 1)
-                    IntegerField("Frame count", value: $settings.frameCount, minimum: 1)
+                    IntegerField(
+                        "Frame count",
+                        value: $settings.frameCount,
+                        minimum: 1
+                    )
                 }
                 Section("Geometry") {
-                    IntegerField("Horizontal spacing", value: $settings.horizontalSpacing, minimum: 0, suffix: "px")
-                    IntegerField("Vertical spacing", value: $settings.verticalSpacing, minimum: 0, suffix: "px")
-                    IntegerField("Margin", value: $settings.margin, minimum: 0, suffix: "px")
+                    IntegerField(
+                        "Horizontal spacing",
+                        value: $settings.horizontalSpacing,
+                        minimum: 0,
+                        suffix: "px"
+                    )
+                    IntegerField(
+                        "Vertical spacing",
+                        value: $settings.verticalSpacing,
+                        minimum: 0,
+                        suffix: "px"
+                    )
+                    IntegerField(
+                        "Margin",
+                        value: $settings.margin,
+                        minimum: 0,
+                        suffix: "px"
+                    )
                 }
                 Section("Order") {
                     Picker("Extraction order", selection: $settings.order) {
-                        Text("Left to right, then down").tag(ExtractionOrder.rowMajor)
-                        Text("Top to bottom, then right").tag(ExtractionOrder.columnMajor)
+                        Text("Left to right, then down").tag(
+                            ExtractionOrder.rowMajor
+                        )
+                        Text("Top to bottom, then right").tag(
+                            ExtractionOrder.columnMajor
+                        )
                     }
                 }
                 if let errorMessage {
@@ -46,7 +83,10 @@ struct ExtractionView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Extract") {
                         do {
-                            try model.extractFrames(from: source.id, settings: settings)
+                            try model.extractFrames(
+                                from: source.id,
+                                settings: settings
+                            )
                             dismiss()
                         } catch {
                             errorMessage = error.localizedDescription
@@ -60,7 +100,9 @@ struct ExtractionView: View {
     }
 
     private func updateDefaultCount() {
-        let (capacity, overflow) = settings.columns.multipliedReportingOverflow(by: settings.rows)
+        let (capacity, overflow) = settings.columns.multipliedReportingOverflow(
+            by: settings.rows
+        )
         if !overflow { settings.frameCount = capacity }
     }
 }

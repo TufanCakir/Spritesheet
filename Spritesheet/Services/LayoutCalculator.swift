@@ -1,3 +1,10 @@
+//
+//  LayoutCalculator.swift
+//  Spritesheet
+//
+//  Created by Tufan Cakir on 13.10.26.
+//
+
 import Foundation
 
 enum LayoutError: LocalizedError, Equatable {
@@ -15,9 +22,12 @@ enum LayoutError: LocalizedError, Equatable {
         case .invalidColumns: "Columns must be at least 1."
         case .invalidRows: "Rows must be at least 1."
         case .negativeSpacing: "Spacing and margins cannot be negative."
-        case let .cellTooSmall(width, height): "The cell must be at least \(width) × \(height) pixels."
-        case let .manualRowsTooSmall(required): "The layout needs at least \(required) rows."
-        case .arithmeticOverflow: "The requested dimensions exceed integer arithmetic limits."
+        case .cellTooSmall(let width, let height):
+            "The cell must be at least \(width) × \(height) pixels."
+        case .manualRowsTooSmall(let required):
+            "The layout needs at least \(required) rows."
+        case .arithmeticOverflow:
+            "The requested dimensions exceed integer arithmetic limits."
         }
     }
 }
@@ -41,29 +51,47 @@ struct CalculatedLayout: Equatable, Sendable {
 }
 
 enum LayoutCalculator {
-    static func calculate(frameRects: [PixelRect], layout: SheetLayout) throws -> CalculatedLayout {
+    static func calculate(frameRects: [PixelRect], layout: SheetLayout) throws
+        -> CalculatedLayout
+    {
         guard !frameRects.isEmpty else { throw LayoutError.noFrames }
         guard layout.columns >= 1 else { throw LayoutError.invalidColumns }
-        guard layout.horizontalSpacing >= 0, layout.verticalSpacing >= 0, layout.margin >= 0 else {
+        guard layout.horizontalSpacing >= 0, layout.verticalSpacing >= 0,
+            layout.margin >= 0
+        else {
             throw LayoutError.negativeSpacing
         }
 
         let maxWidth = frameRects.map(\.width).max() ?? 0
         let maxHeight = frameRects.map(\.height).max() ?? 0
-        guard frameRects.allSatisfy({ $0.width > 0 && $0.height > 0 && $0.x >= 0 && $0.y >= 0 }) else {
-            throw LayoutError.cellTooSmall(requiredWidth: maxWidth, requiredHeight: maxHeight)
+        guard
+            frameRects.allSatisfy({
+                $0.width > 0 && $0.height > 0 && $0.x >= 0 && $0.y >= 0
+            })
+        else {
+            throw LayoutError.cellTooSmall(
+                requiredWidth: maxWidth,
+                requiredHeight: maxHeight
+            )
         }
 
         let cellWidth = layout.cellWidth ?? maxWidth
         let cellHeight = layout.cellHeight ?? maxHeight
         guard cellWidth >= maxWidth, cellHeight >= maxHeight else {
-            throw LayoutError.cellTooSmall(requiredWidth: maxWidth, requiredHeight: maxHeight)
+            throw LayoutError.cellTooSmall(
+                requiredWidth: maxWidth,
+                requiredHeight: maxHeight
+            )
         }
 
-        let automaticRows = frameRects.count / layout.columns + (frameRects.count % layout.columns == 0 ? 0 : 1)
+        let automaticRows =
+            frameRects.count / layout.columns
+            + (frameRects.count % layout.columns == 0 ? 0 : 1)
         let rows = layout.manualRows ?? automaticRows
         guard rows >= 1 else { throw LayoutError.invalidRows }
-        guard rows >= automaticRows else { throw LayoutError.manualRowsTooSmall(required: automaticRows) }
+        guard rows >= automaticRows else {
+            throw LayoutError.manualRowsTooSmall(required: automaticRows)
+        }
 
         let width = try checkedDimension(
             cells: layout.columns,
@@ -88,13 +116,27 @@ enum LayoutCalculator {
         )
     }
 
-    private static func checkedDimension(cells: Int, cellSize: Int, spacing: Int, margin: Int) throws -> Int {
-        let (cellPixels, cellOverflow) = cells.multipliedReportingOverflow(by: cellSize)
-        let (gapPixels, gapOverflow) = max(0, cells - 1).multipliedReportingOverflow(by: spacing)
-        let (margins, marginOverflow) = margin.multipliedReportingOverflow(by: 2)
-        let (partial, partialOverflow) = cellPixels.addingReportingOverflow(gapPixels)
+    private static func checkedDimension(
+        cells: Int,
+        cellSize: Int,
+        spacing: Int,
+        margin: Int
+    ) throws -> Int {
+        let (cellPixels, cellOverflow) = cells.multipliedReportingOverflow(
+            by: cellSize
+        )
+        let (gapPixels, gapOverflow) = max(0, cells - 1)
+            .multipliedReportingOverflow(by: spacing)
+        let (margins, marginOverflow) = margin.multipliedReportingOverflow(
+            by: 2
+        )
+        let (partial, partialOverflow) = cellPixels.addingReportingOverflow(
+            gapPixels
+        )
         let (result, resultOverflow) = partial.addingReportingOverflow(margins)
-        guard !cellOverflow, !gapOverflow, !marginOverflow, !partialOverflow, !resultOverflow else {
+        guard !cellOverflow, !gapOverflow, !marginOverflow, !partialOverflow,
+            !resultOverflow
+        else {
             throw LayoutError.arithmeticOverflow
         }
         return result
@@ -108,8 +150,12 @@ enum LayoutCalculator {
     ) -> (x: Int, y: Int) {
         let column = index % calculated.columns
         let row = index / calculated.columns
-        let cellX = layout.margin + column * (calculated.cellWidth + layout.horizontalSpacing)
-        let cellY = layout.margin + row * (calculated.cellHeight + layout.verticalSpacing)
+        let cellX =
+            layout.margin + column
+            * (calculated.cellWidth + layout.horizontalSpacing)
+        let cellY =
+            layout.margin + row
+            * (calculated.cellHeight + layout.verticalSpacing)
 
         let xOffset: Int
         switch layout.horizontalAlignment {

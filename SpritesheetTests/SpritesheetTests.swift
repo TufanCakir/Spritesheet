@@ -1,13 +1,24 @@
+//
+//  SpritesheetTests.swift
+//  Spritesheet
+//
+//  Created by Tufan Cakir on 13.10.26.
+//
+
 import CoreGraphics
 import Foundation
 import ImageIO
 import Testing
 import UniformTypeIdentifiers
+
 @testable import Spritesheet
 
 struct LayoutCalculatorTests {
     @Test func dhameystirRequiredLayout() throws {
-        let frames = Array(repeating: PixelRect(width: 985, height: 1594), count: 10)
+        let frames = Array(
+            repeating: PixelRect(width: 985, height: 1594),
+            count: 10
+        )
         let result = try LayoutCalculator.calculate(
             frameRects: frames,
             layout: SheetLayout(columns: 5)
@@ -20,10 +31,15 @@ struct LayoutCalculatorTests {
 
     @Test(arguments: [
         (count: 100, expectedRows: 10, expectedHeight: 640),
-        (count: 1001, expectedRows: 101, expectedHeight: 6464)
+        (count: 1001, expectedRows: 101, expectedHeight: 6464),
     ])
-    func manyFrames(case input: (count: Int, expectedRows: Int, expectedHeight: Int)) throws {
-        let frames = Array(repeating: PixelRect(width: 64, height: 64), count: input.count)
+    func manyFrames(
+        case input: (count: Int, expectedRows: Int, expectedHeight: Int)
+    ) throws {
+        let frames = Array(
+            repeating: PixelRect(width: 64, height: 64),
+            count: input.count
+        )
         let result = try LayoutCalculator.calculate(
             frameRects: frames,
             layout: SheetLayout(columns: 10)
@@ -51,8 +67,14 @@ struct LayoutCalculatorTests {
             settings: ExtractionSettings(columns: 3, rows: 2, frameCount: 6)
         )
         #expect(frames.count == 6)
-        #expect(frames[0].pixelRect == PixelRect(x: 0, y: 0, width: 985, height: 1594))
-        #expect(frames[5].pixelRect == PixelRect(x: 1970, y: 1594, width: 985, height: 1594))
+        #expect(
+            frames[0].pixelRect
+                == PixelRect(x: 0, y: 0, width: 985, height: 1594)
+        )
+        #expect(
+            frames[5].pixelRect
+                == PixelRect(x: 1970, y: 1594, width: 985, height: 1594)
+        )
     }
 
     @Test func incompleteGridIsReported() {
@@ -67,7 +89,11 @@ struct LayoutCalculatorTests {
             colorSpaceName: nil,
             hasAlpha: true
         )
-        #expect(throws: ExtractionError.mismatch(ExtractionMismatch(horizontalPixels: 1, verticalPixels: 0))) {
+        #expect(
+            throws: ExtractionError.mismatch(
+                ExtractionMismatch(horizontalPixels: 1, verticalPixels: 0)
+            )
+        ) {
             try FrameExtractor.extract(
                 source: source,
                 settings: ExtractionSettings(columns: 3, rows: 2, frameCount: 6)
@@ -76,7 +102,9 @@ struct LayoutCalculatorTests {
     }
 
     @Test func spacingMarginsAndAlignments() throws {
-        let frames = [PixelRect(width: 2, height: 3), PixelRect(width: 1, height: 1)]
+        let frames = [
+            PixelRect(width: 2, height: 3), PixelRect(width: 1, height: 1),
+        ]
         let layout = SheetLayout(
             columns: 2,
             cellWidth: 4,
@@ -87,18 +115,31 @@ struct LayoutCalculatorTests {
             horizontalAlignment: .trailing,
             verticalAlignment: .bottom
         )
-        let result = try LayoutCalculator.calculate(frameRects: frames, layout: layout)
+        let result = try LayoutCalculator.calculate(
+            frameRects: frames,
+            layout: layout
+        )
 
         #expect(result.outputWidth == 24)
         #expect(result.outputHeight == 19)
-        let origin = LayoutCalculator.frameOrigin(index: 1, frame: frames[1], calculated: result, layout: layout)
+        let origin = LayoutCalculator.frameOrigin(
+            index: 1,
+            frame: frames[1],
+            calculated: result,
+            layout: layout
+        )
         #expect(origin.x == 16)
         #expect(origin.y == 11)
     }
 
     @Test func tooSmallCellFails() {
         let layout = SheetLayout(columns: 1, cellWidth: 9, cellHeight: 20)
-        #expect(throws: LayoutError.cellTooSmall(requiredWidth: 10, requiredHeight: 20)) {
+        #expect(
+            throws: LayoutError.cellTooSmall(
+                requiredWidth: 10,
+                requiredHeight: 20
+            )
+        ) {
             try LayoutCalculator.calculate(
                 frameRects: [PixelRect(width: 10, height: 20)],
                 layout: layout
@@ -107,7 +148,11 @@ struct LayoutCalculatorTests {
     }
 
     @Test func overflowFailsWithoutAllocation() {
-        let layout = SheetLayout(columns: Int.max, cellWidth: Int.max, cellHeight: 1)
+        let layout = SheetLayout(
+            columns: Int.max,
+            cellWidth: Int.max,
+            cellHeight: 1
+        )
         #expect(throws: LayoutError.arithmeticOverflow) {
             try LayoutCalculator.calculate(
                 frameRects: [PixelRect(width: 1, height: 1)],
@@ -121,24 +166,35 @@ struct ImportExportWorkflowTests {
     @Test func orderedMultipleImportAndVerifiedExport() async throws {
         let fixtureDirectory = FileManager.default.temporaryDirectory
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: fixtureDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: fixtureDirectory,
+            withIntermediateDirectories: true
+        )
         defer { try? FileManager.default.removeItem(at: fixtureDirectory) }
 
         let colors: [(UInt8, UInt8, UInt8, UInt8)] = [
             (255, 0, 0, 64),
             (0, 255, 0, 128),
-            (0, 0, 255, 255)
+            (0, 0, 255, 255),
         ]
         let urls = try colors.enumerated().map { index, color in
-            let url = fixtureDirectory.appending(path: String(format: "frame_%02d.png", index))
+            let url = fixtureDirectory.appending(
+                path: String(format: "frame_%02d.png", index)
+            )
             try writeFixture(url: url, width: 2, height: 2, color: color)
             return url
         }
 
         let projectID = UUID()
-        let importResult = await ImageImportService().importPNGs(urls, projectID: projectID)
+        let importResult = await ImageImportService().importPNGs(
+            urls,
+            projectID: projectID
+        )
         #expect(importResult.failures.isEmpty)
-        #expect(importResult.imported.map(\.source.originalFilename) == urls.map(\.lastPathComponent))
+        #expect(
+            importResult.imported.map(\.source.originalFilename)
+                == urls.map(\.lastPathComponent)
+        )
 
         var project = SpriteProject(id: projectID, name: "Workflow")
         project.sources = importResult.imported.map(\.source)
@@ -146,13 +202,17 @@ struct ImportExportWorkflowTests {
         project.layout = SheetLayout(columns: 2)
         project.exportSettings.filename = "workflow"
 
-        let result = try await ExportService().export(snapshot: ProjectSnapshot(project: project))
+        let result = try await ExportService().export(
+            snapshot: ProjectSnapshot(project: project)
+        )
         #expect(result.width == 4)
         #expect(result.height == 4)
         #expect(result.frameCount == 3)
 
         guard let source = CGImageSourceCreateWithURL(result.url as CFURL, nil),
-              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] else {
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
+                as? [CFString: Any]
+        else {
             Issue.record("Exported PNG could not be reopened")
             return
         }
@@ -175,30 +235,159 @@ struct ImportExportWorkflowTests {
             pixels[index + 3] = color.3
         }
         guard let provider = CGDataProvider(data: Data(pixels) as CFData),
-              let image = CGImage(
+            let image = CGImage(
                 width: width,
                 height: height,
                 bitsPerComponent: 8,
                 bitsPerPixel: 32,
                 bytesPerRow: width * 4,
                 space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                bitmapInfo: CGBitmapInfo(
+                    rawValue: CGImageAlphaInfo.last.rawValue
+                ),
                 provider: provider,
                 decode: nil,
                 shouldInterpolate: false,
                 intent: .defaultIntent
-              ),
-              let destination = CGImageDestinationCreateWithURL(
+            ),
+            let destination = CGImageDestinationCreateWithURL(
                 url as CFURL,
                 UTType.png.identifier as CFString,
                 1,
                 nil
-              ) else {
+            )
+        else {
             throw CocoaError(.fileWriteUnknown)
         }
         CGImageDestinationAddImage(destination, image, nil)
         guard CGImageDestinationFinalize(destination) else {
             throw CocoaError(.fileWriteUnknown)
         }
+    }
+}
+
+struct ProjectStorageTests {
+    @Test func repeatedUpdatesRestoreLatestValidProject() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = ProjectStorage(rootDirectory: root)
+        var project = SpriteProject(name: "Dhameystir")
+
+        try storage.save(project)
+        for revision in 1...25 {
+            project.layout.columns = revision
+            project.markModified()
+            try storage.save(project)
+        }
+
+        let restored = try storage.loadProject(id: project.id)
+        #expect(restored.id == project.id)
+        #expect(restored.revision == project.revision)
+        #expect(restored.layout.columns == 25)
+        let listedIDs = try storage.listProjects().map(\.id)
+        #expect(listedIDs == [project.id])
+    }
+
+    @Test func projectsRemainIndependentAndCanBeDeleted() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = ProjectStorage(rootDirectory: root)
+        let first = SpriteProject(name: "First")
+        let second = SpriteProject(name: "Second")
+
+        try storage.save(first)
+        try storage.save(second)
+        let initialIDs = try storage.listProjects().map(\.id)
+        #expect(Set(initialIDs) == Set([first.id, second.id]))
+
+        try storage.deleteProject(id: first.id)
+        let remainingIDs = try storage.listProjects().map(\.id)
+        #expect(remainingIDs == [second.id])
+        #expect(throws: (any Error).self) {
+            try storage.loadProject(id: first.id)
+        }
+    }
+
+    @Test func autosaveNeverLetsOlderRevisionOverwriteNewerRevision()
+        async throws
+    {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = ProjectStorage(rootDirectory: root)
+        let coordinator = AutosaveCoordinator(storage: storage)
+        var older = SpriteProject(name: "Autosave")
+        older.markModified()
+        var newer = older
+        newer.layout.columns = 9
+        newer.markModified()
+
+        await coordinator.schedule(older, delay: .seconds(10))
+        try await coordinator.flush(newer)
+        try await coordinator.flush(older)
+
+        let restored = try storage.loadProject(id: newer.id)
+        #expect(restored.revision == newer.revision)
+        #expect(restored.layout.columns == 9)
+    }
+
+    @Test func completeDhameystirStateRestores() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = ProjectStorage(rootDirectory: root)
+        var project = SpriteProject(name: "Dhameystir")
+        let sourceA = SpriteSource(
+            id: UUID(),
+            relativePath: "Sources/a.png",
+            originalFilename: "a.png",
+            pixelWidth: 2955,
+            pixelHeight: 3188,
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            colorSpaceName: nil,
+            hasAlpha: true
+        )
+        let sourceB = SpriteSource(
+            id: UUID(),
+            relativePath: "Sources/b.png",
+            originalFilename: "b.png",
+            pixelWidth: 3940,
+            pixelHeight: 1594,
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            colorSpaceName: nil,
+            hasAlpha: true
+        )
+        project.sources = [sourceA, sourceB]
+        project.frames =
+            try FrameExtractor.extract(
+                source: sourceA,
+                settings: ExtractionSettings(columns: 3, rows: 2, frameCount: 6)
+            )
+            + FrameExtractor.extract(
+                source: sourceB,
+                settings: ExtractionSettings(columns: 4, rows: 1, frameCount: 4)
+            )
+        project.frames.swapAt(0, 7)
+        project.layout.columns = 5
+        project.animationFPS = 12
+        project.markModified()
+
+        try storage.save(project)
+        let restored = try storage.loadProject(id: project.id)
+        let result = try LayoutCalculator.calculate(
+            frameRects: restored.frames.map(\.pixelRect),
+            layout: restored.layout
+        )
+
+        #expect(restored.frames.map(\.id) == project.frames.map(\.id))
+        #expect(restored.sources == project.sources)
+        #expect(restored.animationFPS == 12)
+        #expect(result.rows == 2)
+        #expect(result.outputWidth == 4925)
+        #expect(result.outputHeight == 3188)
     }
 }

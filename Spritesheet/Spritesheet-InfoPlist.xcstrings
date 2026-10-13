@@ -18,6 +18,18 @@
           }
         }
       }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "comment" : "Privacy - Photo Library Additions Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spritesheet benötigt Zugriff, um exportierte PNG-Dateien in deiner Fotomediathek zu sichern"
+          }
+        }
+      }
     }
   },
   "version" : "1.3"

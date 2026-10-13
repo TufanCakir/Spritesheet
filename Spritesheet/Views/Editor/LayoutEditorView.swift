@@ -1,3 +1,10 @@
+//
+//  LayoutEditorView.swift
+//  Spritesheet
+//
+//  Created by Tufan Cakir on 13.10.26.
+//
+
 import SwiftUI
 
 struct LayoutEditorView: View {
@@ -8,26 +15,55 @@ struct LayoutEditorView: View {
         NavigationStack {
             Form {
                 Section("Grid") {
-                    IntegerField("Columns", value: $model.project.layout.columns, minimum: 1)
+                    IntegerField(
+                        "Columns",
+                        value: $model.project.layout.columns,
+                        minimum: 1
+                    )
                     Toggle("Automatic rows", isOn: automaticRowsBinding)
                     if model.project.layout.manualRows != nil {
-                        IntegerField("Rows", value: manualRowsBinding, minimum: 1)
+                        IntegerField(
+                            "Rows",
+                            value: manualRowsBinding,
+                            minimum: 1
+                        )
                     }
                 }
 
                 Section("Spacing") {
-                    IntegerField("Horizontal", value: $model.project.layout.horizontalSpacing, minimum: 0, suffix: "px")
-                    IntegerField("Vertical", value: $model.project.layout.verticalSpacing, minimum: 0, suffix: "px")
-                    IntegerField("Margin", value: $model.project.layout.margin, minimum: 0, suffix: "px")
+                    IntegerField(
+                        "Horizontal",
+                        value: $model.project.layout.horizontalSpacing,
+                        minimum: 0,
+                        suffix: "px"
+                    )
+                    IntegerField(
+                        "Vertical",
+                        value: $model.project.layout.verticalSpacing,
+                        minimum: 0,
+                        suffix: "px"
+                    )
+                    IntegerField(
+                        "Margin",
+                        value: $model.project.layout.margin,
+                        minimum: 0,
+                        suffix: "px"
+                    )
                 }
 
                 Section("Alignment") {
-                    Picker("Horizontal", selection: $model.project.layout.horizontalAlignment) {
+                    Picker(
+                        "Horizontal",
+                        selection: $model.project.layout.horizontalAlignment
+                    ) {
                         Text("Leading").tag(HorizontalAlignmentOption.leading)
                         Text("Center").tag(HorizontalAlignmentOption.center)
                         Text("Trailing").tag(HorizontalAlignmentOption.trailing)
                     }
-                    Picker("Vertical", selection: $model.project.layout.verticalAlignment) {
+                    Picker(
+                        "Vertical",
+                        selection: $model.project.layout.verticalAlignment
+                    ) {
                         Text("Top").tag(VerticalAlignmentOption.top)
                         Text("Center").tag(VerticalAlignmentOption.center)
                         Text("Bottom").tag(VerticalAlignmentOption.bottom)
@@ -36,8 +72,15 @@ struct LayoutEditorView: View {
 
                 if let calculated = model.calculatedLayout {
                     Section("Output") {
-                        LabeledContent("Frames", value: model.project.frames.count.formatted())
-                        LabeledContent("Size", value: "\(calculated.outputWidth) × \(calculated.outputHeight) px")
+                        LabeledContent(
+                            "Frames",
+                            value: model.project.frames.count.formatted()
+                        )
+                        LabeledContent(
+                            "Size",
+                            value:
+                                "\(calculated.outputWidth) × \(calculated.outputHeight) px"
+                        )
                     }
                 } else if !model.project.frames.isEmpty {
                     Section {
@@ -55,16 +98,23 @@ struct LayoutEditorView: View {
                         Task { await model.save() }
                         dismiss()
                     }
-                    .disabled(!model.project.frames.isEmpty && model.calculatedLayout == nil)
+                    .disabled(
+                        !model.project.frames.isEmpty
+                            && model.calculatedLayout == nil
+                    )
                 }
             }
         }
+        .interactiveDismissDisabled()
     }
 
     private var automaticRowsBinding: Binding<Bool> {
         Binding(
             get: { model.project.layout.manualRows == nil },
-            set: { model.project.layout.manualRows = $0 ? nil : max(1, model.calculatedLayout?.rows ?? 1) }
+            set: {
+                model.project.layout.manualRows =
+                    $0 ? nil : max(1, model.calculatedLayout?.rows ?? 1)
+            }
         )
     }
 
@@ -94,7 +144,12 @@ struct IntegerField: View {
     let minimum: Int
     var suffix: String?
 
-    init(_ title: LocalizedStringKey, value: Binding<Int>, minimum: Int, suffix: String? = nil) {
+    init(
+        _ title: LocalizedStringKey,
+        value: Binding<Int>,
+        minimum: Int,
+        suffix: String? = nil
+    ) {
         self.title = title
         _value = value
         self.minimum = minimum

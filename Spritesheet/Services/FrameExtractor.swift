@@ -1,3 +1,10 @@
+//
+//  FrameExtractor.swift
+//  Spritesheet
+//
+//  Created by Tufan Cakir on 13.10.26.
+//
+
 import Foundation
 
 enum ExtractionOrder: String, Codable, CaseIterable, Sendable {
@@ -31,45 +38,68 @@ enum ExtractionError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidGrid: "Columns and rows must each be at least 1."
-        case let .invalidFrameCount(capacity): "Frame count must be between 1 and the grid capacity of \(capacity)."
-        case .invalidGeometry: "Frame size, spacing, and margin values are invalid."
-        case let .mismatch(value):
+        case .invalidFrameCount(let capacity):
+            "Frame count must be between 1 and the grid capacity of \(capacity)."
+        case .invalidGeometry:
+            "Frame size, spacing, and margin values are invalid."
+        case .mismatch(let value):
             "The grid differs from the source by \(value.horizontalPixels) horizontal and \(value.verticalPixels) vertical pixels."
         }
     }
 }
 
 enum FrameExtractor {
-    static func extract(source: SpriteSource, settings: ExtractionSettings) throws -> [SpriteFrame] {
-        guard settings.columns > 0, settings.rows > 0 else { throw ExtractionError.invalidGrid }
-        let (capacity, overflow) = settings.columns.multipliedReportingOverflow(by: settings.rows)
+    static func extract(source: SpriteSource, settings: ExtractionSettings)
+        throws -> [SpriteFrame]
+    {
+        guard settings.columns > 0, settings.rows > 0 else {
+            throw ExtractionError.invalidGrid
+        }
+        let (capacity, overflow) = settings.columns.multipliedReportingOverflow(
+            by: settings.rows
+        )
         guard !overflow else { throw LayoutError.arithmeticOverflow }
         guard settings.frameCount > 0, settings.frameCount <= capacity else {
             throw ExtractionError.invalidFrameCount(capacity: capacity)
         }
-        guard settings.margin >= 0, settings.horizontalSpacing >= 0, settings.verticalSpacing >= 0 else {
+        guard settings.margin >= 0, settings.horizontalSpacing >= 0,
+            settings.verticalSpacing >= 0
+        else {
             throw ExtractionError.invalidGeometry
         }
 
-        let availableWidth = source.pixelWidth - 2 * settings.margin - (settings.columns - 1) * settings.horizontalSpacing
-        let availableHeight = source.pixelHeight - 2 * settings.margin - (settings.rows - 1) * settings.verticalSpacing
-        guard availableWidth > 0, availableHeight > 0 else { throw ExtractionError.invalidGeometry }
+        let availableWidth =
+            source.pixelWidth - 2 * settings.margin - (settings.columns - 1)
+            * settings.horizontalSpacing
+        let availableHeight =
+            source.pixelHeight - 2 * settings.margin - (settings.rows - 1)
+            * settings.verticalSpacing
+        guard availableWidth > 0, availableHeight > 0 else {
+            throw ExtractionError.invalidGeometry
+        }
 
-        let frameWidth = settings.frameWidth ?? availableWidth / settings.columns
-        let frameHeight = settings.frameHeight ?? availableHeight / settings.rows
-        guard frameWidth > 0, frameHeight > 0 else { throw ExtractionError.invalidGeometry }
+        let frameWidth =
+            settings.frameWidth ?? availableWidth / settings.columns
+        let frameHeight =
+            settings.frameHeight ?? availableHeight / settings.rows
+        guard frameWidth > 0, frameHeight > 0 else {
+            throw ExtractionError.invalidGeometry
+        }
 
-        let usedWidth = frameWidth * settings.columns
+        let usedWidth =
+            frameWidth * settings.columns
             + settings.horizontalSpacing * (settings.columns - 1)
             + 2 * settings.margin
-        let usedHeight = frameHeight * settings.rows
+        let usedHeight =
+            frameHeight * settings.rows
             + settings.verticalSpacing * (settings.rows - 1)
             + 2 * settings.margin
         let mismatch = ExtractionMismatch(
             horizontalPixels: source.pixelWidth - usedWidth,
             verticalPixels: source.pixelHeight - usedHeight
         )
-        guard mismatch.horizontalPixels == 0, mismatch.verticalPixels == 0 else {
+        guard mismatch.horizontalPixels == 0, mismatch.verticalPixels == 0
+        else {
             throw ExtractionError.mismatch(mismatch)
         }
 
@@ -88,8 +118,10 @@ enum FrameExtractor {
                 id: UUID(),
                 sourceID: source.id,
                 pixelRect: PixelRect(
-                    x: settings.margin + column * (frameWidth + settings.horizontalSpacing),
-                    y: settings.margin + row * (frameHeight + settings.verticalSpacing),
+                    x: settings.margin + column
+                        * (frameWidth + settings.horizontalSpacing),
+                    y: settings.margin + row
+                        * (frameHeight + settings.verticalSpacing),
                     width: frameWidth,
                     height: frameHeight
                 )

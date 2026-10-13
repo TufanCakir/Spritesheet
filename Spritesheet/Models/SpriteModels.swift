@@ -1,3 +1,10 @@
+//
+//  SpriteModels.swift
+//  Spritesheet
+//
+//  Created by Tufan Cakir on 13.10.26.
+//
+
 import Foundation
 
 /// Pixel coordinates use a top-left origin. X increases right; Y increases down.
@@ -77,10 +84,13 @@ struct SpriteProject: Identifiable, Codable, Sendable {
     var layout: SheetLayout
     var exportSettings: ExportSettings
     var animationFPS: Double
+    var animationLoops: Bool?
+    var animationPlaysBackward: Bool?
+    var animationPingPong: Bool?
     var modifiedAt: Date
     var revision: Int
 
-    init(id: UUID = UUID(), name: String = "Untitled") {
+    init(id: UUID = UUID(), name: String = String(localized: "Untitled")) {
         schemaVersion = Self.schemaVersion
         self.id = id
         self.name = name
@@ -89,6 +99,9 @@ struct SpriteProject: Identifiable, Codable, Sendable {
         layout = SheetLayout()
         exportSettings = ExportSettings()
         animationFPS = 12
+        animationLoops = true
+        animationPlaysBackward = false
+        animationPingPong = false
         modifiedAt = .now
         revision = 0
     }

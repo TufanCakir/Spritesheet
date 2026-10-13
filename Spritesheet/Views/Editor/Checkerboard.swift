@@ -1,3 +1,10 @@
+//
+//  Checkerboard.swift
+//  Spritesheet
+//
+//  Created by Tufan Cakir on 13.10.26.
+//
+
 import SwiftUI
 
 struct Checkerboard: View {
@@ -9,16 +16,19 @@ struct Checkerboard: View {
             let rows = Int(ceil(size.height / squareSize))
             for row in 0..<rows {
                 for column in 0..<columns {
-                    let color = (row + column).isMultiple(of: 2)
+                    let color =
+                        (row + column).isMultiple(of: 2)
                         ? Color.secondary.opacity(0.18)
                         : Color.secondary.opacity(0.08)
                     context.fill(
-                        Path(CGRect(
-                            x: CGFloat(column) * squareSize,
-                            y: CGFloat(row) * squareSize,
-                            width: squareSize,
-                            height: squareSize
-                        )),
+                        Path(
+                            CGRect(
+                                x: CGFloat(column) * squareSize,
+                                y: CGFloat(row) * squareSize,
+                                width: squareSize,
+                                height: squareSize
+                            )
+                        ),
                         with: .color(color)
                     )
                 }
