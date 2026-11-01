@@ -71,6 +71,14 @@ struct ProjectsView: View {
                 .labelStyle(.iconOnly)
             }
             ToolbarItem(placement: .primaryAction) {
+                Button("Restore Animation", systemImage: "film") {
+                    if let id = library.createProject(name: String(localized: "Recovered Animation")) {
+                        library.activeEditor?.showsRecovery = true
+                        openProject(id)
+                    }
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button(
                     "New Project",
                     systemImage: "plus",

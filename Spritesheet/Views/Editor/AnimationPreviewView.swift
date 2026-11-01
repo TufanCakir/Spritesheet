@@ -13,8 +13,7 @@ struct AnimationPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var isPlaying = false
-    @State private var startDate = Date()
-    @State private var stoppedIndex = 0
+    @State private var playback = AnimationPlayback()
     @State private var playsBackward = false
     @State private var loops = true
     @State private var pingPong: Bool
@@ -33,9 +32,7 @@ struct AnimationPreviewView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                TimelineView(.animation(paused: !isPlaying)) { timeline in
-                    preview(index: displayedIndex(at: timeline.date))
-                }
+                preview(index: playback.index)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Checkerboard())
                 .clipShape(.rect(cornerRadius: 18))
@@ -50,10 +47,14 @@ struct AnimationPreviewView: View {
                         systemImage: isPlaying ? "pause.fill" : "play.fill"
                     ) {
                         if isPlaying {
-                            stoppedIndex = displayedIndex(at: .now)
                             isPlaying = false
                         } else {
-                            startDate = .now
+                            playback.direction = playsBackward ? -1 : 1
+                            if playsBackward && playback.index == 0 {
+                                playback.index = max(0, model.project.frames.count - 1)
+                            } else if !playsBackward && playback.index == model.project.frames.count - 1 {
+                                playback.index = 0
+                            }
                             isPlaying = model.project.frames.count > 1
                         }
                     }
@@ -61,7 +62,7 @@ struct AnimationPreviewView: View {
                     .buttonStyle(.borderedProminent)
                     Button("Stop", systemImage: "stop.fill") {
                         isPlaying = false
-                        stoppedIndex = 0
+                        playback.index = 0
                     }
                     .labelStyle(.iconOnly)
                     Button("Next", systemImage: "forward.end.fill") { step(1) }
@@ -107,12 +108,29 @@ struct AnimationPreviewView: View {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active {
-                    stoppedIndex = displayedIndex(at: .now)
                     isPlaying = false
                 }
             }
         }
         .interactiveDismissDisabled()
+        .onDisappear { isPlaying = false }
+        .onChange(of: playsBackward) { _, backward in playback.direction = backward ? -1 : 1 }
+        .task(id: PlaybackTaskID(playing: isPlaying, fps: model.project.animationFPS)) {
+            guard isPlaying else { return }
+            let clock = ContinuousClock()
+            let fps = model.project.animationFPS.isFinite ? min(60, max(1, model.project.animationFPS)) : 12
+            let interval = Duration.seconds(1 / fps)
+            var deadline = clock.now + interval
+            do {
+                while !Task.isCancelled && isPlaying {
+                    try await clock.sleep(until: deadline)
+                    guard !Task.isCancelled else { return }
+                    isPlaying = playback.advance(count: model.project.frames.count, loops: loops, pingPong: pingPong)
+                    deadline += interval
+                }
+            } catch is CancellationError {
+            } catch { isPlaying = false }
+        }
     }
 
     @ViewBuilder
@@ -138,31 +156,15 @@ struct AnimationPreviewView: View {
         }
     }
 
-    private func displayedIndex(at date: Date) -> Int {
-        let count = model.project.frames.count
-        guard count > 1, isPlaying else {
-            return min(stoppedIndex, max(0, count - 1))
-        }
-        let elapsed = max(0, date.timeIntervalSince(startDate))
-        let ticks = Int(elapsed * model.project.animationFPS)
-        let base = stoppedIndex + ticks
-        let index: Int
-        if pingPong {
-            let period = max(1, (count - 1) * 2)
-            let position = base % period
-            index = position < count ? position : period - position
-        } else if loops {
-            index = base % count
-        } else {
-            index = min(base, count - 1)
-        }
-        return playsBackward ? count - 1 - index : index
-    }
-
     private func step(_ amount: Int) {
         isPlaying = false
         let count = model.project.frames.count
         guard count > 0 else { return }
-        stoppedIndex = min(max(0, stoppedIndex + amount), count - 1)
+        playback.index = min(max(0, playback.index + amount), count - 1)
     }
+}
+
+private struct PlaybackTaskID: Hashable {
+    let playing: Bool
+    let fps: Double
 }

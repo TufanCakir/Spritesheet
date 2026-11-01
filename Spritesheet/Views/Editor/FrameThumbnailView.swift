@@ -13,6 +13,7 @@ struct FrameThumbnailView: View {
     let frame: SpriteFrame
 
     @State private var image: CGImage?
+    @State private var failed = false
 
     var body: some View {
         ZStack {
@@ -23,17 +24,21 @@ struct FrameThumbnailView: View {
                     .interpolation(.none)
                     .scaledToFit()
                     .padding(4)
+            } else if failed {
+                Image(systemName: "exclamationmark.triangle")
+                    .accessibilityLabel("Error")
             } else {
                 ProgressView()
             }
         }
         .task(id: frame.id) {
-            guard let source else { return }
-            image = try? await ImagePipeline.shared.thumbnail(
-                projectID: projectID,
-                source: source,
-                frame: frame
-            )
+            image = nil
+            failed = false
+            guard let source else { failed = true; return }
+            do {
+                image = try await ImagePipeline.shared.thumbnail(
+                    projectID: projectID, source: source, frame: frame)
+            } catch { failed = true }
         }
     }
 }

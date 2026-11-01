@@ -15,9 +15,12 @@ enum ImportFailure: LocalizedError, Sendable {
     case unsupported(String)
     case corrupt(String)
     case copyFailed(String)
+    case imageTooLarge
 
     var errorDescription: String? {
         switch self {
+        case .imageTooLarge:
+            RecoveryFailure.imageTooLarge.errorDescription
         case .accessDenied(let name):
             String(localized: "Access to “\(name)” was denied.")
         case .unsupported(let name):
@@ -99,6 +102,14 @@ actor ImageImportService {
             let width = properties[kCGImagePropertyPixelWidth] as? Int,
             let height = properties[kCGImagePropertyPixelHeight] as? Int
         else {
+            throw ImportFailure.corrupt(filename)
+        }
+
+        do { try PNGFrameCodec.validateSize(width: width, height: height) }
+        catch { throw ImportFailure.imageTooLarge }
+        guard CGImageSourceCreateImageAtIndex(imageSource, 0,
+                  [kCGImageSourceShouldCache: false] as CFDictionary) != nil,
+              CGImageSourceGetStatusAtIndex(imageSource, 0) == .statusComplete else {
             throw ImportFailure.corrupt(filename)
         }
 

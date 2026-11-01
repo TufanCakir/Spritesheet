@@ -13,6 +13,8 @@ actor ImagePipeline {
     static let shared = ImagePipeline()
     private let storage = ProjectStorage()
     private let cache = NSCache<NSString, CGImageBox>()
+    private var currentSourceURL: URL?
+    private var currentSourceImage: CGImage?
 
     func thumbnail(
         projectID: UUID,
@@ -31,26 +33,15 @@ actor ImagePipeline {
             projectID: projectID,
             relativePath: source.relativePath
         )
-        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil),
-            let image = CGImageSourceCreateImageAtIndex(
-                imageSource,
-                0,
-                [kCGImageSourceShouldCacheImmediately: true] as CFDictionary
-            )
-        else {
+        if currentSourceURL != url {
+            currentSourceImage = nil
+            currentSourceImage = try PNGFrameCodec.load(url)
+            currentSourceURL = url
+        }
+        guard let image = currentSourceImage else {
             throw ImportFailure.corrupt(source.originalFilename)
         }
-
-        let rect = frame.pixelRect
-        let cropRect = CGRect(
-            x: rect.x,
-            y: image.height - rect.y - rect.height,
-            width: rect.width,
-            height: rect.height
-        )
-        guard let crop = image.cropping(to: cropRect) else {
-            throw ExportFailure.invalidFrame(source.originalFilename)
-        }
+        let crop = try FrameExtractor.crop(image, rect: frame.pixelRect)
         cache.setObject(
             CGImageBox(image: crop),
             forKey: key,

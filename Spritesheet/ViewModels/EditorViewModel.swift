@@ -12,6 +12,7 @@ import Observation
 @Observable
 final class EditorViewModel {
     var project: SpriteProject
+    var showsRecovery = false
     var selectedFrameIDs: Set<UUID> = []
     var isImporting = false
     var isExporting = false

@@ -124,15 +124,7 @@ actor ExportService {
                 throw ExportFailure.invalidFrame(source.originalFilename)
             }
 
-            let cropRect = CGRect(
-                x: rect.x,
-                y: image.height - rect.y - rect.height,
-                width: rect.width,
-                height: rect.height
-            )
-            guard let cropped = image.cropping(to: cropRect) else {
-                throw ExportFailure.invalidFrame(source.originalFilename)
-            }
+            let cropped = try FrameExtractor.crop(image, rect: rect)
 
             let origin = LayoutCalculator.frameOrigin(
                 index: index,

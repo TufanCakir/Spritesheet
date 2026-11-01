@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var isRenamePresented = false
     @State private var renameText = ""
+    @State private var showsFrameExport = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +48,9 @@ struct ContentView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button("Restore Animation", systemImage: "film") { model.showsRecovery = true }
+                    Button("Export Frames", systemImage: "square.and.arrow.up") { showsFrameExport = true }
+                        .disabled(model.project.frames.isEmpty)
                     Button("Rename", systemImage: "pencil") {
                         renameText = model.project.name
                         isRenamePresented = true
@@ -107,6 +111,13 @@ struct ContentView: View {
                     )
                 }
             }
+        }
+        .sheet(isPresented: Binding(get: { model.showsRecovery }, set: { model.showsRecovery = $0 })) {
+            RecoverySourceView(model: model)
+        }
+        .sheet(isPresented: $showsFrameExport) {
+            FrameExportView(project: model.project, frames: model.selectedFrameIDs.isEmpty
+                ? model.project.frames : model.project.frames.filter { model.selectedFrameIDs.contains($0.id) })
         }
         .sheet(isPresented: $isLayoutPresented) {
             LayoutEditorView(model: model)

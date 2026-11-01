@@ -1,10 +1,4 @@
-//
-//  FrameExtractor.swift
-//  Spritesheet
-//
-//  Created by Tufan Cakir on 13.10.26.
-//
-
+import CoreGraphics
 import Foundation
 
 enum ExtractionOrder: String, Codable, CaseIterable, Sendable {
@@ -21,6 +15,8 @@ struct ExtractionSettings: Equatable, Sendable {
     var horizontalSpacing = 0
     var verticalSpacing = 0
     var margin = 0
+    var marginX: Int?
+    var marginY: Int?
     var order = ExtractionOrder.rowMajor
 }
 
@@ -37,95 +33,84 @@ enum ExtractionError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .invalidGrid: "Columns and rows must each be at least 1."
+        case .invalidGrid:
+            String(localized: "Columns and rows must each be at least 1.")
         case .invalidFrameCount(let capacity):
-            "Frame count must be between 1 and the grid capacity of \(capacity)."
+            String(localized: "Frame count must be between 1 and \(capacity).")
         case .invalidGeometry:
-            "Frame size, spacing, and margin values are invalid."
-        case .mismatch(let value):
-            "The grid differs from the source by \(value.horizontalPixels) horizontal and \(value.verticalPixels) vertical pixels."
+            String(localized: "Frame size, spacing, or margins are invalid or too large.")
+        case .mismatch:
+            String(localized: "The grid does not fit the image exactly. Adjust the frame size, spacing, or margins.")
         }
     }
 }
 
 enum FrameExtractor {
-    static func extract(source: SpriteSource, settings: ExtractionSettings)
-        throws -> [SpriteFrame]
-    {
-        guard settings.columns > 0, settings.rows > 0 else {
-            throw ExtractionError.invalidGrid
-        }
-        let (capacity, overflow) = settings.columns.multipliedReportingOverflow(
-            by: settings.rows
-        )
-        guard !overflow else { throw LayoutError.arithmeticOverflow }
-        guard settings.frameCount > 0, settings.frameCount <= capacity else {
-            throw ExtractionError.invalidFrameCount(capacity: capacity)
-        }
-        guard settings.margin >= 0, settings.horizontalSpacing >= 0,
-            settings.verticalSpacing >= 0
-        else {
-            throw ExtractionError.invalidGeometry
-        }
+    // Bound metadata allocation independently of image size.
+    static let maximumFrameCount = 10_000
 
-        let availableWidth =
-            source.pixelWidth - 2 * settings.margin - (settings.columns - 1)
-            * settings.horizontalSpacing
-        let availableHeight =
-            source.pixelHeight - 2 * settings.margin - (settings.rows - 1)
-            * settings.verticalSpacing
-        guard availableWidth > 0, availableHeight > 0 else {
-            throw ExtractionError.invalidGeometry
+    static func extract(source: SpriteSource, settings: ExtractionSettings) throws -> [SpriteFrame] {
+        guard settings.columns > 0, settings.rows > 0 else { throw ExtractionError.invalidGrid }
+        let (capacity, overflow) = settings.columns.multipliedReportingOverflow(by: settings.rows)
+        guard !overflow else { throw ExtractionError.invalidGeometry }
+        guard settings.frameCount > 0, settings.frameCount <= min(capacity, maximumFrameCount) else {
+            throw ExtractionError.invalidFrameCount(capacity: min(capacity, maximumFrameCount))
         }
-
-        let frameWidth =
-            settings.frameWidth ?? availableWidth / settings.columns
-        let frameHeight =
-            settings.frameHeight ?? availableHeight / settings.rows
-        guard frameWidth > 0, frameHeight > 0 else {
-            throw ExtractionError.invalidGeometry
-        }
-
-        let usedWidth =
-            frameWidth * settings.columns
-            + settings.horizontalSpacing * (settings.columns - 1)
-            + 2 * settings.margin
-        let usedHeight =
-            frameHeight * settings.rows
-            + settings.verticalSpacing * (settings.rows - 1)
-            + 2 * settings.margin
-        let mismatch = ExtractionMismatch(
-            horizontalPixels: source.pixelWidth - usedWidth,
-            verticalPixels: source.pixelHeight - usedHeight
-        )
-        guard mismatch.horizontalPixels == 0, mismatch.verticalPixels == 0
-        else {
-            throw ExtractionError.mismatch(mismatch)
-        }
-
+        let x = settings.marginX ?? settings.margin
+        let y = settings.marginY ?? settings.margin
+        let width = try dimension(source.pixelWidth, cells: settings.columns,
+                                  explicit: settings.frameWidth, spacing: settings.horizontalSpacing, margin: x)
+        let height = try dimension(source.pixelHeight, cells: settings.rows,
+                                   explicit: settings.frameHeight, spacing: settings.verticalSpacing, margin: y)
+        let mismatch = ExtractionMismatch(horizontalPixels: width.remainder, verticalPixels: height.remainder)
+        guard width.remainder == 0, height.remainder == 0 else { throw ExtractionError.mismatch(mismatch) }
         return (0..<settings.frameCount).map { index in
-            let column: Int
-            let row: Int
-            switch settings.order {
-            case .rowMajor:
-                column = index % settings.columns
-                row = index / settings.columns
-            case .columnMajor:
-                column = index / settings.rows
-                row = index % settings.rows
-            }
-            return SpriteFrame(
-                id: UUID(),
-                sourceID: source.id,
-                pixelRect: PixelRect(
-                    x: settings.margin + column
-                        * (frameWidth + settings.horizontalSpacing),
-                    y: settings.margin + row
-                        * (frameHeight + settings.verticalSpacing),
-                    width: frameWidth,
-                    height: frameHeight
-                )
-            )
+            let column = settings.order == .rowMajor ? index % settings.columns : index / settings.rows
+            let row = settings.order == .rowMajor ? index / settings.columns : index % settings.rows
+            return SpriteFrame(id: UUID(), sourceID: source.id, pixelRect: PixelRect(
+                x: x + column * (width.size + settings.horizontalSpacing),
+                y: y + row * (height.size + settings.verticalSpacing),
+                width: width.size, height: height.size))
+        }
+    }
+
+    private static func dimension(_ pixels: Int, cells: Int, explicit: Int?,
+                                  spacing: Int, margin: Int) throws -> (size: Int, remainder: Int) {
+        guard pixels > 0, spacing >= 0, margin >= 0 else { throw ExtractionError.invalidGeometry }
+        let (margins, mo) = margin.multipliedReportingOverflow(by: 2)
+        let (gaps, go) = (cells - 1).multipliedReportingOverflow(by: spacing)
+        let (occupied, oo) = margins.addingReportingOverflow(gaps)
+        guard !mo, !go, !oo, occupied < pixels else { throw ExtractionError.invalidGeometry }
+        let available = pixels - occupied
+        let size = explicit ?? available / cells
+        guard size > 0, size <= available / cells,
+              size <= Int.max - spacing else { throw ExtractionError.invalidGeometry }
+        return (size, available - size * cells)
+    }
+
+    /// CGImage cropping uses image pixel coordinates, with the first scanline at y = 0.
+    /// Do not apply the Quartz drawing-context Y flip here.
+    static func crop(_ image: CGImage, rect: PixelRect) throws -> CGImage {
+        guard rect.x >= 0, rect.y >= 0, rect.width > 0, rect.height > 0,
+              rect.width <= image.width, rect.height <= image.height,
+              rect.x <= image.width - rect.width, rect.y <= image.height - rect.height,
+              let cropped = image.cropping(to: CGRect(x: rect.x, y: rect.y,
+                                                      width: rect.width, height: rect.height)) else {
+            throw ExtractionError.invalidGeometry
+        }
+        return cropped
+    }
+
+    static func suggestions(for source: SpriteSource) -> [ExtractionSettings] {
+        [16, 32, 64, 128, 256].compactMap { size in
+            guard source.pixelWidth > 0, source.pixelHeight > 0,
+                  source.pixelWidth % size == 0, source.pixelHeight % size == 0 else { return nil }
+            let columns = source.pixelWidth / size
+            let rows = source.pixelHeight / size
+            let (count, overflow) = columns.multipliedReportingOverflow(by: rows)
+            guard !overflow, count <= maximumFrameCount else { return nil }
+            return ExtractionSettings(columns: columns, rows: rows, frameCount: count,
+                                      frameWidth: size, frameHeight: size)
         }
     }
 }
